@@ -1,0 +1,7 @@
+akshare
+pandas
+psycopg2-binary
+SQLAlchemy
+schedule
+yfinance
+akshare
