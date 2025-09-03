@@ -176,7 +176,7 @@ def get_hk_minute_data(stock_code):
     try:
         full_code = f"{stock_code[1:]}.HK"  # 去掉前导0，格式为0700.HK
         # 显式指定auto_adjust=True以避免FutureWarning
-        data = yf.download(full_code, period='1d', interval='1m', auto_adjust=True)
+        data = yf.download(full_code, period='1y', interval='1m', auto_adjust=True)
         
         if data.empty:
             print(f"⚠️ 未能获取到 {stock_code} 的数据")

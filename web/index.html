@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分时K线图</title>
+    <!-- 引入ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind CSS -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#6B7280',
+                        success: '#36D399',
+                        warning: '#FBBD23',
+                        error: '#F87272',
+                        'chart-bg': '#1E1E1E',
+                        'chart-line': '#4C9AFF',
+                        'chart-grid': '#333333',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            .transition-smooth {
+                transition: all 0.3s ease;
+            }
+        }
+    </style>
+    
+    <style>
+        body {
+            background-color: #f9fafb;
+            overflow-x: hidden;
+        }
+        #chart-container {
+            height: 500px;
+            width: 100%;
+        }
+        .market-selector {
+            display: flex;
+            gap: 8px;
+        }
+        .market-btn {
+            padding: 8px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .market-btn:hover {
+            background-color: #f3f4f6;
+        }
+        .market-btn.active {
+            background-color: #165DFF;
+            color: white;
+            border-color: #165DFF;
+        }
+        /* 加载动画 */
+        .loader {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #165DFF;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800 min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-line-chart text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-primary">股票分时K线图</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">首页</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">使用指南</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">关于</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- 控制面板 -->
+        <div class="bg-white rounded-lg card-shadow p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- 市场选择 -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-700">选择市场</label>
+                    <div class="market-selector">
+                        <button class="market-btn active" data-market="cn">
+                            <i class="fa fa-cny mr-1"></i>A股
+                        </button>
+                        <button class="market-btn" data-market="hk">
+                            <i class="fa fa-hkd mr-1"></i>港股
+                        </button>
+                        <button class="market-btn" data-market="us">
+                            <i class="fa fa-usd mr-1"></i>美股
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 股票代码输入 -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-700">股票代码</label>
+                    <input 
+                        type="text" 
+                        id="stock-code" 
+                        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        placeholder="请输入股票代码，如：600519"
+                        value="600519"
+                    >
+                </div>
+                
+                <!-- 日期选择 -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-700">选择日期</label>
+                    <input 
+                        type="date" 
+                        id="trade-date" 
+                        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        value=""
+                    >
+                </div>
+                
+                <!-- 查询和刷新按钮 -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-700 invisible">操作</label>
+                    <div class="flex space-x-2">
+                        <button 
+                            id="search-btn" 
+                            class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-smooth"
+                        >
+                            <i class="fa fa-search mr-1"></i>查询
+                        </button>
+                        <button 
+                            id="refresh-btn" 
+                            class="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-smooth"
+                        >
+                            <i class="fa fa-refresh mr-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 股票信息和加载状态 -->
+        <div class="flex justify-between items-center mb-4">
+            <div id="stock-info" class="text-lg font-medium text-gray-800"></div>
+            <div id="loading-indicator" class="hidden">
+                <div class="loader inline-block mr-2"></div>
+                <span class="text-gray-600 text-sm">加载中...</span>
+            </div>
+        </div>
+        
+        <!-- K线图容器 -->
+        <div class="bg-white rounded-lg card-shadow p-4 mb-6">
+            <div id="chart-container"></div>
+        </div>
+        
+        <!-- 数据信息面板 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-lg card-shadow p-4">
+                <p class="text-sm text-gray-500">开盘价</p>
+                <p id="open-price" class="text-xl font-bold">--</p>
+            </div>
+            <div class="bg-white rounded-lg card-shadow p-4">
+                <p class="text-sm text-gray-500">最高价</p>
+                <p id="high-price" class="text-xl font-bold text-green-500">--</p>
+            </div>
+            <div class="bg-white rounded-lg card-shadow p-4">
+                <p class="text-sm text-gray-500">最低价</p>
+                <p id="low-price" class="text-xl font-bold text-red-500">--</p>
+            </div>
+            <div class="bg-white rounded-lg card-shadow p-4">
+                <p class="text-sm text-gray-500">最新价</p>
+                <p id="close-price" class="text-xl font-bold">--</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-50 border-t border-gray-200 py-6 mt-8">
+        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+            <p>股票分时K线图 - 数据仅供参考，不构成投资建议</p>
+            <p class="mt-2">&copy; 2023 股票数据可视化系统. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // 全局变量
+        let currentMarket = 'cn';
+        let currentCode = '600519';
+        let currentDate = '';
+        let chart = null;
+        
+        // DOM元素
+        const marketBtns = document.querySelectorAll('.market-btn');
+        const stockCodeInput = document.getElementById('stock-code');
+        const tradeDateInput = document.getElementById('trade-date');
+        const searchBtn = document.getElementById('search-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const stockInfo = document.getElementById('stock-info');
+        const openPriceEl = document.getElementById('open-price');
+        const highPriceEl = document.getElementById('high-price');
+        const lowPriceEl = document.getElementById('low-price');
+        const closePriceEl = document.getElementById('close-price');
+        
+        // 设置默认日期为今天
+        function setDefaultDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            tradeDateInput.value = formattedDate;
+            currentDate = formattedDate;
+        }
+        
+        // 初始化图表
+        function initChart() {
+            // 获取图表容器
+            const chartDom = document.getElementById('chart-container');
+            // 初始化ECharts实例
+            chart = echarts.init(chartDom);
+            
+            // 设置图表配置
+            const option = {
+                backgroundColor: '#ffffff',
+                animation: true,
+                legend: {
+                    data: ['分时线'],
+                    top: 10,
+                    left: 'center',
+                    textStyle: {
+                        color: '#6B7280'
+                    }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    borderColor: 'transparent',
+                    textStyle: {
+                        color: '#ffffff'
+                    },
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#6B7280'
+                        }
+                    },
+                    formatter: function(params) {
+                        if (params && params.length > 0) {
+                            const data = params[0];
+                            const index = data.dataIndex;
+                            const series = data.seriesName;
+                            
+                            // 获取当前点的数据，确保数据类型为数字
+                            const dateTime = params[0].axisValue;
+                            const open = (parseFloat(data.data[1]) || 0).toFixed(2);
+                            const high = (parseFloat(data.data[2]) || 0).toFixed(2);
+                            const low = (parseFloat(data.data[3]) || 0).toFixed(2);
+                            const close = (parseFloat(data.data[4]) || 0).toFixed(2);
+                            const volume = (parseInt(data.data[5]) || 0).toLocaleString();
+                            
+                            return `
+                                <div class="font-medium mb-1">${dateTime}</div>
+                                <div>开盘价: <span class="text-white">${open}</span></div>
+                                <div>最高价: <span class="text-green-400">${high}</span></div>
+                                <div>最低价: <span class="text-red-400">${low}</span></div>
+                                <div>收盘价: <span class="text-white">${close}</span></div>
+                                <div>成交量: <span class="text-yellow-400">${volume}</span></div>
+                            `;
+                        }
+                        return '暂无数据';
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '15%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: [],
+                    axisLine: {
+                        lineStyle: {
+                            color: '#E5E7EB'
+                        }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: '#6B7280',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    scale: true, // 启用非线性刻度，更好地展示波动
+                    axisLine: {
+                        show: false
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#F3F4F6',
+                            type: 'dashed'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#6B7280',
+                        fontSize: 12,
+                        formatter: '{value}'
+                    },
+                    // 根据数据范围动态调整Y轴范围，增强波动显示
+                    min: function(value) {
+                        const min = value.min;
+                        const max = value.max;
+                        const padding = (max - min) * 0.1; // 添加10%的边距
+                        return min - padding;
+                    },
+                    max: function(value) {
+                        const min = value.min;
+                        const max = value.max;
+                        const padding = (max - min) * 0.1; // 添加10%的边距
+                        return max + padding;
+                    }
+                },
+                series: [
+                    {
+                        name: '分时线',
+                        type: 'line',
+                        data: [],
+                        lineStyle: {
+                            color: '#165DFF',
+                            width: 2.5, // 稍微增加线条宽度
+                            opacity: 0.9
+                        },
+                        itemStyle: {
+                            color: '#165DFF'
+                        },
+                        smooth: true,
+                        symbol: 'none',
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {
+                                    offset: 0,
+                                    color: 'rgba(22, 93, 255, 0.2)'
+                                },
+                                {
+                                    offset: 1,
+                                    color: 'rgba(22, 93, 255, 0.05)'
+                                }
+                            ])
+                        }
+                    },
+                    {
+                        // 添加开盘价参考线，使波动更直观
+                        name: '开盘价',
+                        type: 'line',
+                        markLine: {
+                            silent: true,
+                            symbol: 'none',
+                            data: [
+                                {
+                                    name: '开盘价',
+                                    yAxis: function(params) {
+                                        // 获取所有序列中的第一个数据点的开盘价
+                                        if (params && params.seriesModel && params.seriesModel.seriesIndex === 0) {
+                                            const data = params.seriesModel.getRawData()[0];
+                                            return data && data[1] ? parseFloat(data[1]) : null;
+                                        }
+                                        return null;
+                                    }
+                                }
+                            ],
+                            lineStyle: {
+                                color: '#6B7280',
+                                type: 'dashed',
+                                width: 1
+                            },
+                            label: {
+                                formatter: function(params) {
+                                    return `开盘价: ${params.value.toFixed(2)}`;
+                                },
+                                position: 'end'
+                            }
+                        },
+                        showSymbol: false,
+                        lineStyle: {
+                            opacity: 0
+                        },
+                        areaStyle: {
+                            opacity: 0
+                        }
+                    }
+                ]
+            };
+            
+            // 设置图表选项
+            chart.setOption(option);
+            
+            // 监听窗口大小变化，自适应图表大小
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+        
+        // 加载股票数据
+        function loadStockData(market, code, date = '') {
+            // 显示加载状态
+            loadingIndicator.classList.remove('hidden');
+            
+            // 更新当前市场和代码
+            currentMarket = market;
+            currentCode = code;
+            if (date) {
+                currentDate = date;
+            }
+            
+            // 更新股票信息显示
+            let infoText = `${getMarketName(market)} ${code}`;
+            if (date) {
+                infoText += ` - ${date}`;
+            }
+            stockInfo.textContent = infoText;
+            
+            // 构建API URL，包含日期参数
+            let apiUrl = `http://localhost:5001/api/stock/minute?market=${market}&code=${code}`;
+            if (date) {
+                apiUrl += `&date=${date}`;
+            }
+            
+            // 发送请求获取数据
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络响应错误');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 隐藏加载状态
+                    loadingIndicator.classList.add('hidden');
+                    
+                    // 处理数据并更新图表
+                    updateChart(data, market, code);
+                    
+                    // 更新数据信息面板
+                    updateDataPanel(data);
+                })
+                .catch(error => {
+                    // 隐藏加载状态
+                    loadingIndicator.classList.add('hidden');
+                    
+                    // 显示错误信息
+                    console.error('获取股票数据失败:', error);
+                    alert(`获取股票数据失败: ${error.message || '未知错误'}`);
+                });
+        }
+        
+        // 格式化时间，只显示时分
+        function formatTime(datetimeStr) {
+            // 假设datetimeStr格式为 'YYYY-MM-DD HH:mm:ss'
+            const timePart = datetimeStr.split(' ')[1];
+            // 返回时:分格式，如 '09:30'
+            return timePart ? timePart.slice(0, 5) : datetimeStr;
+        }
+        
+        // 计算并选择时间点为30的倍数的刻度（如9:30，10:00，10:30等）
+        function getThirtyMinuteTicks(rawData) {
+            if (!rawData || rawData.length === 0) return [];
+            
+            const ticks = [];
+            const timePoints = new Set();
+            
+            // 解析第一个时间和最后一个时间
+            const firstTimeStr = rawData[0];
+            const lastTimeStr = rawData[rawData.length - 1];
+            const [firstDatePart, firstTimePart] = firstTimeStr.split(' ');
+            const [lastDatePart, lastTimePart] = lastTimeStr.split(' ');
+            
+            // 解析第一个时间的小时和分钟
+            const [firstHour, firstMinute] = firstTimePart.split(':').map(Number);
+            
+            // 计算第一个应该显示的30分钟时间点
+            let currentHour = firstHour;
+            let currentMinute = firstMinute < 30 ? 0 : 30;
+            if (firstMinute >= 30) {
+                currentMinute = 0;
+                currentHour += 1;
+            }
+            
+            // 生成所有应该显示的30分钟时间点
+            const allTargetTimes = [];
+            while (true) {
+                // 构建时间字符串
+                const targetTimeStr = `${firstDatePart} ${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`;
+                
+                // 检查是否超过最后一个时间点
+                if (targetTimeStr > lastTimeStr) break;
+                
+                allTargetTimes.push(targetTimeStr);
+                
+                // 移动到下一个30分钟
+                currentMinute += 30;
+                if (currentMinute >= 60) {
+                    currentMinute -= 60;
+                    currentHour += 1;
+                }
+            }
+            
+            // 对于每个目标时间点，找到原始数据中最接近的点作为刻度
+            allTargetTimes.forEach(targetTime => {
+                let closestIndex = 0;
+                let minDiff = Infinity;
+                
+                for (let i = 0; i < rawData.length; i++) {
+                    const timeDiff = Math.abs(new Date(rawData[i]) - new Date(targetTime));
+                    if (timeDiff < minDiff) {
+                        minDiff = timeDiff;
+                        closestIndex = i;
+                    }
+                }
+                
+                timePoints.add(closestIndex);
+            });
+            
+            // 添加第一个点和最后一个点
+            timePoints.add(0);
+            timePoints.add(rawData.length - 1);
+            
+            // 转换为数组并排序
+            Array.from(timePoints).sort((a, b) => a - b).forEach(index => ticks.push(index));
+            
+            return ticks;
+        }
+        
+        // 更新图表数据
+        function updateChart(data, market, code) {
+            if (!data || !data.datetime || data.datetime.length === 0) {
+                // 没有数据时显示空图表
+                chart.setOption({
+                    xAxis: {
+                        data: []
+                    },
+                    series: [
+                        {
+                            data: []
+                        }
+                    ]
+                });
+                alert('未找到该股票的分时数据');
+                return;
+            }
+            
+            // 处理时间格式，只保留时分部分
+            const formattedTimes = data.datetime.map(formatTime);
+            
+            // 计算每隔30分钟的刻度位置
+            const tickPositions = getThirtyMinuteTicks(data.datetime);
+            
+            // 将tickPositions转换为Set以提高查找效率
+            const tickPositionSet = new Set(tickPositions);
+            
+            // 转换数据格式为ECharts所需的格式
+            const chartData = [];
+            for (let i = 0; i < data.datetime.length; i++) {
+                chartData.push([
+                    formattedTimes[i], // 使用格式化后的时间
+                    data.open[i],
+                    data.high[i],
+                    data.low[i],
+                    data.close[i],
+                    data.volume[i]
+                ]);
+            }
+            
+            // 更新图表，设置X轴显示间隔为每隔30分钟
+            chart.setOption({
+                xAxis: {
+                    data: formattedTimes,
+                    // 合并后的axisLabel配置
+                    axisLabel: {
+                        show: true,
+                        interval: 0, // 设置为0表示显示所有标签，然后通过formatter函数筛选
+                        formatter: function(value, index) {
+                            // 只有在指定的刻度位置才显示标签
+                            return tickPositionSet.has(index) ? value : '';
+                        }
+                    },
+                    axisTick: {
+                        // 只在指定的刻度位置显示刻度线
+                        show: true,
+                        interval: function(index) {
+                            return tickPositionSet.has(index);
+                        }
+                    }
+                },
+                series: [
+                    {
+                        data: chartData
+                    }
+                ]
+            });
+        }
+        
+        // 更新数据信息面板
+        function updateDataPanel(data) {
+            if (!data || !data.datetime || data.datetime.length === 0) {
+                // 清空数据面板
+                openPriceEl.textContent = '--';
+                highPriceEl.textContent = '--';
+                lowPriceEl.textContent = '--';
+                closePriceEl.textContent = '--';
+                return;
+            }
+            
+            // 获取开盘价（第一条数据）
+            const openPrice = parseFloat(data.open[0]) || 0;
+            // 获取最高价
+            const highPrice = Math.max(...data.high.map(p => parseFloat(p) || 0));
+            // 获取最低价
+            const lowPrice = Math.min(...data.low.map(p => parseFloat(p) || 0));
+            // 获取最新价（最后一条数据）
+            const closePrice = parseFloat(data.close[data.close.length - 1]) || 0;
+            
+            // 更新数据面板 - 确保是数字类型再调用toFixed
+            openPriceEl.textContent = openPrice.toFixed(2);
+            highPriceEl.textContent = highPrice.toFixed(2);
+            lowPriceEl.textContent = lowPrice.toFixed(2);
+            closePriceEl.textContent = closePrice.toFixed(2);
+            
+            // 根据涨跌设置颜色
+            if (closePrice > openPrice) {
+                closePriceEl.className = 'text-xl font-bold text-green-500';
+            } else if (closePrice < openPrice) {
+                closePriceEl.className = 'text-xl font-bold text-red-500';
+            } else {
+                closePriceEl.className = 'text-xl font-bold';
+            }
+        }
+        
+        // 获取市场名称
+        function getMarketName(market) {
+            const marketNames = {
+                'cn': 'A股',
+                'hk': '港股',
+                'us': '美股'
+            };
+            return marketNames[market] || market;
+        }
+        
+        // 事件监听
+        function setupEventListeners() {
+            // 市场选择按钮点击事件
+            marketBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除所有按钮的active类
+                    marketBtns.forEach(b => b.classList.remove('active'));
+                    // 为当前点击的按钮添加active类
+                    this.classList.add('active');
+                    // 获取市场类型
+                    const market = this.getAttribute('data-market');
+                    // 更新当前市场
+                    currentMarket = market;
+                    // 提示用户输入对应市场的股票代码并点击查询
+                    if (stockCodeInput.value.trim()) {
+                        console.log(`已切换到${getMarketName(market)}，请确认股票代码是否正确并点击查询`);
+                    }
+                });
+            });
+            
+            // 查询按钮点击事件
+            searchBtn.addEventListener('click', function() {
+                const code = stockCodeInput.value.trim();
+                const date = tradeDateInput.value;
+                if (code) {
+                    // 获取当前选中的市场
+                    const activeMarketBtn = document.querySelector('.market-btn.active');
+                    const market = activeMarketBtn ? activeMarketBtn.getAttribute('data-market') : 'cn';
+                    loadStockData(market, code, date);
+                } else {
+                    alert('请输入股票代码');
+                }
+            });
+            
+            // 刷新按钮点击事件
+            refreshBtn.addEventListener('click', function() {
+                loadStockData(currentMarket, currentCode, currentDate);
+            });
+            
+            // 回车键查询
+            stockCodeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchBtn.click();
+                }
+            });
+        }
+        
+        // 初始化应用
+        function initApp() {
+            // 设置默认日期
+            setDefaultDate();
+            
+            // 初始化图表
+            initChart();
+            
+            // 设置事件监听
+            setupEventListeners();
+            
+            // 加载默认数据
+            loadStockData('cn', '600519', currentDate);
+        }
+        
+        // 页面加载完成后初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
