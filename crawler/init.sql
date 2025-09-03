@@ -95,6 +95,55 @@ CREATE TABLE IF NOT EXISTS schema_updates (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 创建A股日交易数据表
+CREATE TABLE IF NOT EXISTS cn_data_day (
+    code VARCHAR(50) NOT NULL,
+    datetime DATE NOT NULL,
+    open NUMERIC(10,4),
+    high NUMERIC(10,4),
+    low NUMERIC(10,4),
+    close NUMERIC(10,4),
+    volume BIGINT,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (code, datetime)
+);
+
+-- 创建港股日交易数据表
+CREATE TABLE IF NOT EXISTS hk_data_day (
+    code VARCHAR(50) NOT NULL,
+    datetime DATE NOT NULL,
+    open NUMERIC(10,4),
+    high NUMERIC(10,4),
+    low NUMERIC(10,4),
+    close NUMERIC(10,4),
+    volume BIGINT,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (code, datetime)
+);
+
+-- 创建美股日交易数据表
+CREATE TABLE IF NOT EXISTS us_data_day (
+    code VARCHAR(50) NOT NULL,
+    datetime DATE NOT NULL,
+    open NUMERIC(10,4),
+    high NUMERIC(10,4),
+    low NUMERIC(10,4),
+    close NUMERIC(10,4),
+    volume BIGINT,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (code, datetime)
+);
+
+-- 增加索引以提高查询性能
+CREATE INDEX IF NOT EXISTS idx_cn_data_day_code ON cn_data_day (code);
+CREATE INDEX IF NOT EXISTS idx_cn_data_day_datetime ON cn_data_day (datetime);
+
+CREATE INDEX IF NOT EXISTS idx_hk_data_day_code ON hk_data_day (code);
+CREATE INDEX IF NOT EXISTS idx_hk_data_day_datetime ON hk_data_day (datetime);
+
+CREATE INDEX IF NOT EXISTS idx_us_data_day_code ON us_data_day (code);
+CREATE INDEX IF NOT EXISTS idx_us_data_day_datetime ON us_data_day (datetime);
+
 -- 记录创建时间
 INSERT INTO schema_updates (description, update_time) 
-VALUES ('Created all database tables including stock codes, minute data and realtime data tables', CURRENT_TIMESTAMP);
+VALUES ('Created all database tables including stock codes, minute data, realtime data and daily trading data tables', CURRENT_TIMESTAMP);
