@@ -319,66 +319,6 @@
                     text: '股票走势图',
                     left: 'center'
                 },
-                tooltip: {
-                    trigger: 'axis',
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    borderColor: '#888',
-                    borderWidth: 1,
-                    textStyle: {
-                        color: '#333'
-                    },
-                    formatter: function(params) {
-                        // 获取原始数据索引
-                        const dataIndex = params[0].dataIndex;
-                        
-                        // 使用闭包中的原始时间戳数组
-                        if (window.originalTimestamps && window.originalTimestamps.length > dataIndex) {
-                            const fullTimestamp = window.originalTimestamps[dataIndex];
-                            let result = '<strong>' + fullTimestamp + '</strong><br/>';
-                            
-                            // 添加开盘价、最高价、最低价和最新价信息
-                            if (window.stockData && window.stockData.open && window.stockData.high && window.stockData.low && window.stockData.close && 
-                                window.stockData.open.length > dataIndex && window.stockData.high.length > dataIndex && 
-                                window.stockData.low.length > dataIndex && window.stockData.close.length > dataIndex) {
-                                const open = parseFloat(window.stockData.open[dataIndex]) || 0;
-                                const high = parseFloat(window.stockData.high[dataIndex]) || 0;
-                                const low = parseFloat(window.stockData.low[dataIndex]) || 0;
-                                const close = parseFloat(window.stockData.close[dataIndex]) || 0;
-                                const volume = window.stockData.volume && window.stockData.volume.length > dataIndex ? 
-                                               (parseFloat(window.stockData.volume[dataIndex]) || 0) : 0;
-                                
-                                result += '开盘价: ' + open.toFixed(2) + '<br/>';
-                                result += '最高价: ' + high.toFixed(2) + '<br/>';
-                                result += '最低价: ' + low.toFixed(2) + '<br/>';
-                                result += '最新价: ' + close.toFixed(2) + '<br/>';
-                                if (volume > 0) {
-                                    result += '成交量: ' + volume.toLocaleString() + '<br/>';
-                                }
-                                result += '<br/>';
-                            }
-                            
-                            // 添加系列数据
-                            params.forEach(param => {
-                                if (param.value !== null) {
-                                    result += param.marker + ' ' + param.seriesName + ': ' + param.value.toFixed(2) + '<br/>';
-                                } else {
-                                    result += param.marker + ' ' + param.seriesName + ': --<br/>';
-                                }
-                            });
-                            return result;
-                        }
-                        // 降级处理
-                        let result = '<strong>' + params[0].axisValue + '</strong><br/>';
-                        params.forEach(param => {
-                            if (param.value !== null) {
-                                result += param.marker + ' ' + param.seriesName + ': ' + param.value.toFixed(2) + '<br/>';
-                            } else {
-                                result += param.marker + ' ' + param.seriesName + ': --<br/>';
-                            }
-                        });
-                        return result;
-                    }
-                },
                 // 使用完整的axisPointer配置，确保交叉线光标参考线正常显示
                 axisPointer: {
                     show: true,
@@ -1196,7 +1136,7 @@
                 }
             }
             
-            // 完整重建图表配置
+            // 完整重建图表配置，只保留必要的数据相关配置
             const option = {
                 xAxis: {
                     data: formattedTimes,
@@ -1284,121 +1224,6 @@
                     }
                 },
                 series: series,
-                // 增强axisPointer配置，提供更丰富的交互体验
-                axisPointer: {
-                    show: true,
-                    type: 'cross',
-                    crossStyle: {
-                        color: '#999',
-                        width: 1,
-                        type: 'dashed',
-                        dashOffset: 3
-                    },
-                    lineStyle: {
-                        color: '#999',
-                        width: 1,
-                        type: 'dashed'
-                    },
-                    shadowStyle: {
-                        color: 'rgba(150, 150, 150, 0.1)',
-                        shadowBlur: 10
-                    },
-                    label: {
-                        show: true,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        borderColor: '#999',
-                        borderWidth: 1,
-                        padding: [5, 10],
-                        formatter: function(params) {
-                            return params.value;
-                        },
-                        transitionDuration: 0.3
-                    },
-                    animation: true,
-                    animationDuration: 300,
-                    animationEasing: 'cubicOut'
-                },
-                // 增强tooltip配置，确保显示完整信息和样式
-                tooltip: {
-                    trigger: 'axis',
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    borderColor: '#888',
-                    borderWidth: 1,
-                    textStyle: {
-                        color: '#333',
-                        fontSize: 12,
-                        fontFamily: 'Arial, sans-serif'
-                    },
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(0, 0, 0, 0.1)',
-                    transitionDuration: 0.3,
-                    alwaysShowContent: false,
-                    triggerOn: 'mousemove|click',
-                    showDelay: 0,
-                    hideDelay: 100,
-                    enterable: true,
-                    confine: false,
-                    appendToBody: false,
-                    formatter: function(params) {
-                        // 获取原始数据索引
-                        const dataIndex = params[0].dataIndex;
-                        
-                        // 使用闭包中的原始时间戳数组
-                        if (window.originalTimestamps && window.originalTimestamps.length > dataIndex) {
-                            const fullTimestamp = window.originalTimestamps[dataIndex];
-                            let result = `<strong>${fullTimestamp}</strong><br/>`;
-                            
-                            // 添加开盘价、最高价、最低价和最新价信息
-                            if (window.stockData && window.stockData.open && window.stockData.high && window.stockData.low && window.stockData.close && 
-                                window.timestampMap && window.timestampMap.has(fullTimestamp)) {
-                                const mapping = window.timestampMap.get(fullTimestamp);
-                                const originalIndex = mapping.realtimeIndex; // 使用原始数据的索引
-                                
-                                if (originalIndex !== -1 && 
-                                    window.stockData.open.length > originalIndex && 
-                                    window.stockData.high.length > originalIndex && 
-                                    window.stockData.low.length > originalIndex && 
-                                    window.stockData.close.length > originalIndex) {
-                                    const open = parseFloat(window.stockData.open[originalIndex]) || 0;
-                                    const high = parseFloat(window.stockData.high[originalIndex]) || 0;
-                                    const low = parseFloat(window.stockData.low[originalIndex]) || 0;
-                                    const close = parseFloat(window.stockData.close[originalIndex]) || 0;
-                                    const volume = window.stockData.volume && window.stockData.volume.length > originalIndex ? 
-                                                   (parseFloat(window.stockData.volume[originalIndex]) || 0) : 0;
-                                    
-                                    result += `开盘价: ${open.toFixed(2)}<br/>`;
-                                    result += `最高价: ${high.toFixed(2)}<br/>`;
-                                    result += `最低价: ${low.toFixed(2)}<br/>`;
-                                    result += `最新价: ${close.toFixed(2)}<br/>`;
-                                    if (volume > 0) {
-                                        result += `成交量: ${volume.toLocaleString()}<br/>`;
-                                    }
-                                    result += `<br/>`;
-                                }
-                            }
-                            
-                            // 添加系列数据
-                            params.forEach(param => {
-                                if (param.value !== null) {
-                                    result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
-                                } else {
-                                    result += `${param.marker} ${param.seriesName}: --<br/>`;
-                                }
-                            });
-                            return result;
-                        }
-                        // 降级处理
-                        let result = `<strong>${params[0].axisValue}</strong><br/>`;
-                        params.forEach(param => {
-                            if (param.value !== null) {
-                                result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
-                            } else {
-                                result += `${param.marker} ${param.seriesName}: --<br/>`;
-                            }
-                        });
-                        return result;
-                    }
-                },
                 legend: {
                     data: ['实时数据', '预测数据'],
                     bottom: 10
