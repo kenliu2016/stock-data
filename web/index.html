@@ -3,649 +3,532 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票分时K线图</title>
-    <!-- 引入ECharts -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <!-- 引入Tailwind CSS -->
+    <title>股票数据可视化</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入Font Awesome -->
+    <!-- Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    
-    <!-- 配置Tailwind CSS -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        secondary: '#6B7280',
-                        success: '#36D399',
-                        warning: '#FBBD23',
-                        error: '#F87272',
-                        'chart-bg': '#1E1E1E',
-                        'chart-line': '#4C9AFF',
-                        'chart-grid': '#333333',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    
-    <!-- 自定义工具类 -->
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .card-shadow {
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            }
-            .transition-smooth {
-                transition: all 0.3s ease;
-            }
-        }
-    </style>
-    
-    <style>
-        body {
-            background-color: #f9fafb;
-            overflow-x: hidden;
-        }
-        #chart-container {
-            height: 500px;
-            width: 100%;
-        }
-        .market-selector {
-            display: flex;
-            gap: 8px;
-        }
-        .market-btn {
-            padding: 8px 16px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            background-color: white;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .market-btn:hover {
-            background-color: #f3f4f6;
-        }
-        .market-btn.active {
-            background-color: #165DFF;
-            color: white;
-            border-color: #165DFF;
-        }
-        /* 加载动画 */
-        .loader {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #165DFF;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
-<body class="font-sans text-gray-800 min-h-screen">
-    <!-- 导航栏 -->
-    <nav class="bg-white shadow-sm sticky top-0 z-10">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <i class="fa fa-line-chart text-primary text-2xl"></i>
-                <h1 class="text-xl font-bold text-primary">股票分时K线图</h1>
-            </div>
-            <div class="hidden md:flex items-center space-x-4">
-                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">首页</a>
-                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">使用指南</a>
-                <a href="#" class="text-gray-600 hover:text-primary transition-smooth">关于</a>
-            </div>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <header class="bg-white shadow-md py-4">
+        <div class="container mx-auto px-4">
+            <h1 class="text-2xl font-bold text-gray-800">股票数据可视化平台</h1>
         </div>
-    </nav>
+    </header>
 
-    <!-- 主内容区 -->
-    <main class="container mx-auto px-4 py-6">
+    <main class="flex-1 container mx-auto px-4 py-6">
         <!-- 控制面板 -->
-        <div class="bg-white rounded-lg card-shadow p-4 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div id="stockInfo" class="text-lg font-medium text-gray-800 mb-4"></div>
+            
+            <!-- 加载指示器 -->
+            <div id="loadingIndicator" class="hidden text-blue-500 mb-4">
+                <i class="fa fa-spinner fa-spin mr-2"></i>加载中...
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- 市场选择 -->
-                <div class="flex flex-col space-y-2">
-                    <label class="text-sm font-medium text-gray-700">选择市场</label>
-                    <div class="market-selector">
-                        <button class="market-btn active" data-market="cn">
-                            <i class="fa fa-cny mr-1"></i>A股
-                        </button>
-                        <button class="market-btn" data-market="hk">
-                            <i class="fa fa-hkd mr-1"></i>港股
-                        </button>
-                        <button class="market-btn" data-market="us">
-                            <i class="fa fa-usd mr-1"></i>美股
-                        </button>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">市场</label>
+                    <select id="marketSelect" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="cn">A股</option>
+                        <option value="hk">港股</option>
+                        <option value="us">美股</option>
+                    </select>
+                </div>
+                
+                <!-- 股票代码选择 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">股票代码</label>
+                    <div class="relative">
+                        <input type="text" id="stockCodeInput" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2" placeholder="输入股票代码">
+                        <div id="stockCodeDropdown" class="absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden z-10 max-h-60 overflow-y-auto"></div>
                     </div>
                 </div>
                 
-                <!-- 股票代码输入 -->
-                <div class="flex flex-col space-y-2">
-                    <label class="text-sm font-medium text-gray-700">股票代码</label>
-                    <input 
-                        type="text" 
-                        id="stock-code" 
-                        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        placeholder="请输入股票代码，如：600519"
-                        value="600519"
-                    >
+                <!-- 数据类型选择 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">数据类型</label>
+                    <div class="flex space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="dataType" value="minute" class="form-radio text-blue-500 focus:ring-blue-500" checked>
+                            <span class="ml-2">分时线</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="dataType" value="day" class="form-radio text-blue-500 focus:ring-blue-500">
+                            <span class="ml-2">日线</span>
+                        </label>
+                    </div>
                 </div>
                 
-                <!-- 日期选择 -->
-                <div class="flex flex-col space-y-2">
-                    <label class="text-sm font-medium text-gray-700">选择日期</label>
-                    <input 
-                        type="date" 
-                        id="trade-date" 
-                        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        value=""
-                    >
-                </div>
-                
-                <!-- 查询和刷新按钮 -->
-                <div class="flex flex-col space-y-2">
-                    <label class="text-sm font-medium text-gray-700 invisible">操作</label>
-                    <div class="flex space-x-2">
-                        <button 
-                            id="search-btn" 
-                            class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-smooth"
-                        >
-                            <i class="fa fa-search mr-1"></i>查询
-                        </button>
-                        <button 
-                            id="refresh-btn" 
-                            class="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-smooth"
-                        >
-                            <i class="fa fa-refresh mr-1"></i>刷新
-                        </button>
+                <!-- 叠加预测选择 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">叠加预测</label>
+                    <div class="flex items-center">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" id="predictionCheck" class="form-checkbox text-blue-500 focus:ring-blue-500">
+                            <span id="predictionText" class="ml-2">否</span>
+                        </label>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- 股票信息和加载状态 -->
-        <div class="flex justify-between items-center mb-4">
-            <div id="stock-info" class="text-lg font-medium text-gray-800"></div>
-            <div id="loading-indicator" class="hidden">
-                <div class="loader inline-block mr-2"></div>
-                <span class="text-gray-600 text-sm">加载中...</span>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <!-- 开始时间选择 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">开始时间</label>
+                    <input type="datetime-local" id="startTimeInput" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                </div>
+                
+                <!-- 结束时间选择 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">结束时间</label>
+                    <input type="datetime-local" id="endTimeInput" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                </div>
+            </div>
+            
+            <div class="flex justify-end mt-4 space-x-3">
+                <button id="searchBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fa fa-search mr-2"></i>查询
+                </button>
+
+                <button id="refreshBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    <i class="fa fa-refresh mr-2"></i>刷新
+                </button>
             </div>
         </div>
         
-        <!-- K线图容器 -->
-        <div class="bg-white rounded-lg card-shadow p-4 mb-6">
-            <div id="chart-container"></div>
+        <!-- 图表容器 -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div id="chartContainer" class="w-full" style="height: 500px;"></div>
         </div>
         
         <!-- 数据信息面板 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white rounded-lg card-shadow p-4">
-                <p class="text-sm text-gray-500">开盘价</p>
-                <p id="open-price" class="text-xl font-bold">--</p>
-            </div>
-            <div class="bg-white rounded-lg card-shadow p-4">
-                <p class="text-sm text-gray-500">最高价</p>
-                <p id="high-price" class="text-xl font-bold text-green-500">--</p>
-            </div>
-            <div class="bg-white rounded-lg card-shadow p-4">
-                <p class="text-sm text-gray-500">最低价</p>
-                <p id="low-price" class="text-xl font-bold text-red-500">--</p>
-            </div>
-            <div class="bg-white rounded-lg card-shadow p-4">
-                <p class="text-sm text-gray-500">最新价</p>
-                <p id="close-price" class="text-xl font-bold">--</p>
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h2 class="text-lg font-medium text-gray-800 mb-4">数据概览</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center p-3 bg-gray-50 rounded">
+                    <div class="text-sm text-gray-500">开盘价</div>
+                    <div id="openPrice" class="text-xl font-bold"></div>
+                </div>
+                <div class="text-center p-3 bg-gray-50 rounded">
+                    <div class="text-sm text-gray-500">最高价</div>
+                    <div id="highPrice" class="text-xl font-bold"></div>
+                </div>
+                <div class="text-center p-3 bg-gray-50 rounded">
+                    <div class="text-sm text-gray-500">最低价</div>
+                    <div id="lowPrice" class="text-xl font-bold"></div>
+                </div>
+                <div class="text-center p-3 bg-gray-50 rounded">
+                    <div class="text-sm text-gray-500">最新价</div>
+                    <div id="closePrice" class="text-xl font-bold"></div>
+                </div>
             </div>
         </div>
     </main>
-
-    <!-- 页脚 -->
-    <footer class="bg-gray-50 border-t border-gray-200 py-6 mt-8">
-        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
-            <p>股票分时K线图 - 数据仅供参考，不构成投资建议</p>
-            <p class="mt-2">&copy; 2023 股票数据可视化系统. All rights reserved.</p>
+    
+    <footer class="bg-white border-t border-gray-200 py-4">
+        <div class="container mx-auto px-4">
+            <div class="text-center text-gray-600 text-sm">
+                © 2023 股票数据可视化平台 - 所有数据仅供参考
+            </div>
         </div>
     </footer>
-
+    
+    <!-- 加载指示器 -->
+    <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="flex items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mr-3"></div>
+                <span class="text-gray-700">加载数据中...</span>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // 全局变量
         let currentMarket = 'cn';
-        let currentCode = '600519';
-        let currentDate = '';
+        let currentCode = 'sh601606';
+        let currentDataType = 'minute';
+        let currentStartDate = '';
+        let currentEndDate = '';
         let chart = null;
         
-        // DOM元素
-        const marketBtns = document.querySelectorAll('.market-btn');
-        const stockCodeInput = document.getElementById('stock-code');
-        const tradeDateInput = document.getElementById('trade-date');
-        const searchBtn = document.getElementById('search-btn');
-        const refreshBtn = document.getElementById('refresh-btn');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const stockInfo = document.getElementById('stock-info');
-        const openPriceEl = document.getElementById('open-price');
-        const highPriceEl = document.getElementById('high-price');
-        const lowPriceEl = document.getElementById('low-price');
-        const closePriceEl = document.getElementById('close-price');
+        // 空的loadStockData函数占位符，避免未定义错误
+        function loadStockData(market, code, dataType, isPrediction, startTime, endTime, showErrorAlert = true) {
+            // 这个函数稍后会被完整定义覆盖
+            console.log('loadStockData placeholder called');
+        }
         
-        // 设置默认日期为今天
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化图表
+            initChart();
+            
+            // 设置默认日期
+            setDefaultDate();
+            
+            // 加载默认股票数据
+            loadStockData('cn', 'sh601606', 'minute', false, currentStartDate, currentEndDate, false);
+        });
+        
+
+        
+
+
+        
+        // DOM元素引用
+        const marketSelect = document.getElementById('marketSelect');
+        const stockCodeInput = document.getElementById('stockCodeInput');
+        const stockCodeDropdown = document.getElementById('stockCodeDropdown');
+        const dataTypeRadios = document.querySelectorAll('input[name="dataType"]');
+        const predictionCheck = document.getElementById('predictionCheck');
+        const predictionText = document.getElementById('predictionText');
+        const startTimeInput = document.getElementById('startTimeInput');
+        const endTimeInput = document.getElementById('endTimeInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const stockInfo = document.getElementById('stockInfo');
+        const chartContainer = document.getElementById('chartContainer');
+        window.chartContainer = chartContainer; // 确保chartContainer暴露到window对象上
+        const openPriceEl = document.getElementById('openPrice');
+        const highPriceEl = document.getElementById('highPrice');
+        const lowPriceEl = document.getElementById('lowPrice');
+        const closePriceEl = document.getElementById('closePrice');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // 移除未使用的realtimeCheck引用
+        // const realtimeCheck = document.getElementById('realtimeCheck'); // 已移除
+        
+        // 根据数据类型更新日期时间输入控件的格式
+        function updateDateTimeInputType(dataType) {
+            if (dataType === 'minute') {
+                // 分时线：使用datetime-local类型（带时分）
+                startTimeInput.type = 'datetime-local';
+                endTimeInput.type = 'datetime-local';
+            } else {
+                // 日线：使用date类型（仅日期）
+                startTimeInput.type = 'date';
+                endTimeInput.type = 'date';
+            }
+        }
+        
+        // 设置默认日期
         function setDefaultDate() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-            tradeDateInput.value = formattedDate;
-            currentDate = formattedDate;
+            const now = new Date();
+            const dataType = document.querySelector('input[name="dataType"]:checked').value;
+            
+            // 对于日线，设置为最近的交易日
+            if (dataType === 'day') {
+                // 这里简化处理，实际应用中应该获取最近的交易日
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+                
+                const endDate = new Date(now);
+                
+                // 格式化日期为ISO格式
+                if (startTimeInput.type === 'date') {
+                    // 仅日期格式
+                    startTimeInput.value = startDate.toISOString().slice(0, 10);
+                    endTimeInput.value = endDate.toISOString().slice(0, 10);
+                } else {
+                    // 日期时间格式
+                    startTimeInput.value = startDate.toISOString().slice(0, 16);
+                    endTimeInput.value = endDate.toISOString().slice(0, 16);
+                }
+            } else {
+                // 对于分时线，设置开始时间为2025年9月1日9:30（北京时间）
+                const startDate = new Date('2025-09-01T09:30:00');
+                
+                // 设置结束时间为今天的15:00（北京时间）
+                const endDate = new Date(now);
+                endDate.setHours(15, 0, 0, 0);
+                
+                // 格式化日期时间为本地时间字符串（不转换为UTC）
+                if (startTimeInput.type === 'date') {
+                    // 仅日期格式
+                    startTimeInput.value = startDate.toISOString().slice(0, 10);
+                    endTimeInput.value = endDate.toISOString().slice(0, 10);
+                } else {
+                    // 日期时间格式 - 使用本地时间，确保显示北京时间
+                    const formatDateTimeForInput = (date) => {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        return `${year}-${month}-${day}T${hours}:${minutes}`;
+                    };
+                    
+                    startTimeInput.value = formatDateTimeForInput(startDate);
+                    endTimeInput.value = formatDateTimeForInput(endDate);
+                }
+            }
+            
+            // 更新当前日期
+            currentStartDate = startTimeInput.value;
+            currentEndDate = endTimeInput.value;
+        }
+        
+        // 获取市场对应的货币符号
+        function getCurrencySymbol(market) {
+            switch(market) {
+                case 'cn': return 'CN¥';
+                case 'hk': return 'HK$';
+                case 'us': return 'US$';
+                default: return '¥';
+            }
+        }
+        
+        // 获取市场名称
+        function getMarketName(market) {
+            switch(market) {
+                case 'cn': return '中国A股';
+                case 'hk': return '香港港股';
+                case 'us': return '美国美股';
+                default: return '未知';
+            }
         }
         
         // 初始化图表
         function initChart() {
-            // 获取图表容器
-            const chartDom = document.getElementById('chart-container');
-            // 初始化ECharts实例
-            chart = echarts.init(chartDom);
-            
-            // 设置图表配置
-            const option = {
-                backgroundColor: '#ffffff',
-                animation: true,
-                legend: {
-                    data: ['分时线'],
-                    top: 10,
-                    left: 'center',
-                    textStyle: {
-                        color: '#6B7280'
-                    }
-                },
-                tooltip: {
-                    trigger: 'axis',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    borderColor: 'transparent',
-                    textStyle: {
-                        color: '#ffffff'
-                    },
-                    axisPointer: {
-                        type: 'cross',
-                        label: {
-                            backgroundColor: '#6B7280'
-                        }
-                    },
-                    formatter: function(params) {
-                        if (params && params.length > 0) {
-                            const data = params[0];
-                            const index = data.dataIndex;
-                            const series = data.seriesName;
-                            
-                            // 获取当前点的数据，确保数据类型为数字
-                            const dateTime = params[0].axisValue;
-                            const open = (parseFloat(data.data[1]) || 0).toFixed(2);
-                            const high = (parseFloat(data.data[2]) || 0).toFixed(2);
-                            const low = (parseFloat(data.data[3]) || 0).toFixed(2);
-                            const close = (parseFloat(data.data[4]) || 0).toFixed(2);
-                            const volume = (parseInt(data.data[5]) || 0).toLocaleString();
-                            
-                            return `
-                                <div class="font-medium mb-1">${dateTime}</div>
-                                <div>开盘价: <span class="text-white">${open}</span></div>
-                                <div>最高价: <span class="text-green-400">${high}</span></div>
-                                <div>最低价: <span class="text-red-400">${low}</span></div>
-                                <div>收盘价: <span class="text-white">${close}</span></div>
-                                <div>成交量: <span class="text-yellow-400">${volume}</span></div>
-                            `;
-                        }
-                        return '暂无数据';
-                    }
-                },
-                grid: {
-                    left: '3%',
-                    right: '4%',
-                    bottom: '3%',
-                    top: '15%',
-                    containLabel: true
-                },
-                xAxis: {
-                    type: 'category',
-                    boundaryGap: false,
-                    data: [],
-                    axisLine: {
-                        lineStyle: {
-                            color: '#E5E7EB'
-                        }
-                    },
-                    axisTick: {
-                        show: false
-                    },
-                    axisLabel: {
-                        color: '#6B7280',
-                        fontSize: 12
-                    }
-                },
-                yAxis: {
-                    type: 'value',
-                    scale: true, // 启用非线性刻度，更好地展示波动
-                    axisLine: {
-                        show: false
-                    },
-                    axisTick: {
-                        show: false
-                    },
-                    splitLine: {
-                        lineStyle: {
-                            color: '#F3F4F6',
-                            type: 'dashed'
-                        }
-                    },
-                    axisLabel: {
-                        color: '#6B7280',
-                        fontSize: 12,
-                        formatter: '{value}'
-                    },
-                    // 根据数据范围动态调整Y轴范围，增强波动显示
-                    min: function(value) {
-                        const min = value.min;
-                        const max = value.max;
-                        const padding = (max - min) * 0.1; // 添加10%的边距
-                        return min - padding;
-                    },
-                    max: function(value) {
-                        const min = value.min;
-                        const max = value.max;
-                        const padding = (max - min) * 0.1; // 添加10%的边距
-                        return max + padding;
-                    }
-                },
-                series: [
-                    {
-                        name: '分时线',
-                        type: 'line',
-                        data: [],
-                        lineStyle: {
-                            color: '#165DFF',
-                            width: 2.5, // 稍微增加线条宽度
-                            opacity: 0.9
-                        },
-                        itemStyle: {
-                            color: '#165DFF'
-                        },
-                        smooth: true,
-                        symbol: 'none',
-                        areaStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                {
-                                    offset: 0,
-                                    color: 'rgba(22, 93, 255, 0.2)'
-                                },
-                                {
-                                    offset: 1,
-                                    color: 'rgba(22, 93, 255, 0.05)'
-                                }
-                            ])
-                        }
-                    },
-                    {
-                        // 添加开盘价参考线，使波动更直观
-                        name: '开盘价',
-                        type: 'line',
-                        markLine: {
-                            silent: true,
-                            symbol: 'none',
-                            data: [
-                                {
-                                    name: '开盘价',
-                                    yAxis: function(params) {
-                                        // 获取所有序列中的第一个数据点的开盘价
-                                        if (params && params.seriesModel && params.seriesModel.seriesIndex === 0) {
-                                            const data = params.seriesModel.getRawData()[0];
-                                            return data && data[1] ? parseFloat(data[1]) : null;
-                                        }
-                                        return null;
-                                    }
-                                }
-                            ],
-                            lineStyle: {
-                                color: '#6B7280',
-                                type: 'dashed',
-                                width: 1
-                            },
-                            label: {
-                                formatter: function(params) {
-                                    return `开盘价: ${params.value.toFixed(2)}`;
-                                },
-                                position: 'end'
-                            }
-                        },
-                        showSymbol: false,
-                        lineStyle: {
-                            opacity: 0
-                        },
-                        areaStyle: {
-                            opacity: 0
-                        }
-                    }
-                ]
-            };
-            
-            // 设置图表选项
-            chart.setOption(option);
-            
-            // 监听窗口大小变化，自适应图表大小
-            window.addEventListener('resize', function() {
-                chart.resize();
-            });
-        }
-        
-        // 加载股票数据
-        function loadStockData(market, code, date = '') {
-            // 显示加载状态
-            loadingIndicator.classList.remove('hidden');
-            
-            // 更新当前市场和代码
-            currentMarket = market;
-            currentCode = code;
-            if (date) {
-                currentDate = date;
-            }
-            
-            // 更新股票信息显示
-            let infoText = `${getMarketName(market)} ${code}`;
-            if (date) {
-                infoText += ` - ${date}`;
-            }
-            stockInfo.textContent = infoText;
-            
-            // 构建API URL，包含日期参数
-            let apiUrl = `http://localhost:5001/api/stock/minute?market=${market}&code=${code}`;
-            if (date) {
-                apiUrl += `&date=${date}`;
-            }
-            
-            // 发送请求获取数据
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('网络响应错误');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // 隐藏加载状态
-                    loadingIndicator.classList.add('hidden');
-                    
-                    // 处理数据并更新图表
-                    updateChart(data, market, code);
-                    
-                    // 更新数据信息面板
-                    updateDataPanel(data);
-                })
-                .catch(error => {
-                    // 隐藏加载状态
-                    loadingIndicator.classList.add('hidden');
-                    
-                    // 显示错误信息
-                    console.error('获取股票数据失败:', error);
-                    alert(`获取股票数据失败: ${error.message || '未知错误'}`);
-                });
-        }
-        
-        // 格式化时间，只显示时分
-        function formatTime(datetimeStr) {
-            // 假设datetimeStr格式为 'YYYY-MM-DD HH:mm:ss'
-            const timePart = datetimeStr.split(' ')[1];
-            // 返回时:分格式，如 '09:30'
-            return timePart ? timePart.slice(0, 5) : datetimeStr;
-        }
-        
-        // 计算并选择时间点为30的倍数的刻度（如9:30，10:00，10:30等）
-        function getThirtyMinuteTicks(rawData) {
-            if (!rawData || rawData.length === 0) return [];
-            
-            const ticks = [];
-            const timePoints = new Set();
-            
-            // 解析第一个时间和最后一个时间
-            const firstTimeStr = rawData[0];
-            const lastTimeStr = rawData[rawData.length - 1];
-            const [firstDatePart, firstTimePart] = firstTimeStr.split(' ');
-            const [lastDatePart, lastTimePart] = lastTimeStr.split(' ');
-            
-            // 解析第一个时间的小时和分钟
-            const [firstHour, firstMinute] = firstTimePart.split(':').map(Number);
-            
-            // 计算第一个应该显示的30分钟时间点
-            let currentHour = firstHour;
-            let currentMinute = firstMinute < 30 ? 0 : 30;
-            if (firstMinute >= 30) {
-                currentMinute = 0;
-                currentHour += 1;
-            }
-            
-            // 生成所有应该显示的30分钟时间点
-            const allTargetTimes = [];
-            while (true) {
-                // 构建时间字符串
-                const targetTimeStr = `${firstDatePart} ${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`;
-                
-                // 检查是否超过最后一个时间点
-                if (targetTimeStr > lastTimeStr) break;
-                
-                allTargetTimes.push(targetTimeStr);
-                
-                // 移动到下一个30分钟
-                currentMinute += 30;
-                if (currentMinute >= 60) {
-                    currentMinute -= 60;
-                    currentHour += 1;
-                }
-            }
-            
-            // 对于每个目标时间点，找到原始数据中最接近的点作为刻度
-            allTargetTimes.forEach(targetTime => {
-                let closestIndex = 0;
-                let minDiff = Infinity;
-                
-                for (let i = 0; i < rawData.length; i++) {
-                    const timeDiff = Math.abs(new Date(rawData[i]) - new Date(targetTime));
-                    if (timeDiff < minDiff) {
-                        minDiff = timeDiff;
-                        closestIndex = i;
-                    }
-                }
-                
-                timePoints.add(closestIndex);
-            });
-            
-            // 添加第一个点和最后一个点
-            timePoints.add(0);
-            timePoints.add(rawData.length - 1);
-            
-            // 转换为数组并排序
-            Array.from(timePoints).sort((a, b) => a - b).forEach(index => ticks.push(index));
-            
-            return ticks;
-        }
-        
-        // 更新图表数据
-        function updateChart(data, market, code) {
-            if (!data || !data.datetime || data.datetime.length === 0) {
-                // 没有数据时显示空图表
-                chart.setOption({
-                    xAxis: {
-                        data: []
-                    },
-                    series: [
-                        {
-                            data: []
-                        }
-                    ]
-                });
-                alert('未找到该股票的分时数据');
+            // 确保图表容器存在
+            if (!window.chartContainer) {
                 return;
             }
             
-            // 处理时间格式，只保留时分部分
-            const formattedTimes = data.datetime.map(formatTime);
-            
-            // 计算每隔30分钟的刻度位置
-            const tickPositions = getThirtyMinuteTicks(data.datetime);
-            
-            // 将tickPositions转换为Set以提高查找效率
-            const tickPositionSet = new Set(tickPositions);
-            
-            // 转换数据格式为ECharts所需的格式
-            const chartData = [];
-            for (let i = 0; i < data.datetime.length; i++) {
-                chartData.push([
-                    formattedTimes[i], // 使用格式化后的时间
-                    data.open[i],
-                    data.high[i],
-                    data.low[i],
-                    data.close[i],
-                    data.volume[i]
-                ]);
+            // 确保图表容器有正确的尺寸
+            const containerStyle = window.getComputedStyle(window.chartContainer);
+            const width = containerStyle.width;
+            const height = containerStyle.height;
+            // 如果容器尺寸不正确，强制设置
+            if (parseInt(width) < 500 || parseInt(height) < 400) {
+                window.chartContainer.style.width = '100%';
+                window.chartContainer.style.height = '500px';
             }
             
-            // 更新图表，设置X轴显示间隔为每隔30分钟
-            chart.setOption({
-                xAxis: {
-                    data: formattedTimes,
-                    // 合并后的axisLabel配置
-                    axisLabel: {
-                        show: true,
-                        interval: 0, // 设置为0表示显示所有标签，然后通过formatter函数筛选
-                        formatter: function(value, index) {
-                            // 只有在指定的刻度位置才显示标签
-                            return tickPositionSet.has(index) ? value : '';
-                        }
+            // 创建ECharts实例
+            chart = echarts.init(window.chartContainer);
+            window.chart = chart; // 确保window对象能访问到图表实例
+            
+            // 配置图表，包含初始空数据
+            const option = {
+                title: {
+                    text: '股票走势图',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderColor: '#888',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#333'
                     },
-                    axisTick: {
-                        // 只在指定的刻度位置显示刻度线
-                        show: true,
-                        interval: function(index) {
-                            return tickPositionSet.has(index);
+                    formatter: function(params) {
+                        // 获取原始数据索引
+                        const dataIndex = params[0].dataIndex;
+                        
+                        // 使用闭包中的原始时间戳数组
+                        if (window.originalTimestamps && window.originalTimestamps.length > dataIndex) {
+                            const fullTimestamp = window.originalTimestamps[dataIndex];
+                            let result = '<strong>' + fullTimestamp + '</strong><br/>';
+                            
+                            // 添加开盘价、最高价、最低价和最新价信息
+                            if (window.stockData && window.stockData.open && window.stockData.high && window.stockData.low && window.stockData.close && 
+                                window.stockData.open.length > dataIndex && window.stockData.high.length > dataIndex && 
+                                window.stockData.low.length > dataIndex && window.stockData.close.length > dataIndex) {
+                                const open = parseFloat(window.stockData.open[dataIndex]) || 0;
+                                const high = parseFloat(window.stockData.high[dataIndex]) || 0;
+                                const low = parseFloat(window.stockData.low[dataIndex]) || 0;
+                                const close = parseFloat(window.stockData.close[dataIndex]) || 0;
+                                const volume = window.stockData.volume && window.stockData.volume.length > dataIndex ? 
+                                               (parseFloat(window.stockData.volume[dataIndex]) || 0) : 0;
+                                
+                                result += '开盘价: ' + open.toFixed(2) + '<br/>';
+                                result += '最高价: ' + high.toFixed(2) + '<br/>';
+                                result += '最低价: ' + low.toFixed(2) + '<br/>';
+                                result += '最新价: ' + close.toFixed(2) + '<br/>';
+                                if (volume > 0) {
+                                    result += '成交量: ' + volume.toLocaleString() + '<br/>';
+                                }
+                                result += '<br/>';
+                            }
+                            
+                            // 添加系列数据
+                            params.forEach(param => {
+                                if (param.value !== null) {
+                                    result += param.marker + ' ' + param.seriesName + ': ' + param.value.toFixed(2) + '<br/>';
+                                } else {
+                                    result += param.marker + ' ' + param.seriesName + ': --<br/>';
+                                }
+                            });
+                            return result;
                         }
+                        // 降级处理
+                        let result = '<strong>' + params[0].axisValue + '</strong><br/>';
+                        params.forEach(param => {
+                            if (param.value !== null) {
+                                result += param.marker + ' ' + param.seriesName + ': ' + param.value.toFixed(2) + '<br/>';
+                            } else {
+                                result += param.marker + ' ' + param.seriesName + ': --<br/>';
+                            }
+                        });
+                        return result;
                     }
                 },
-                series: [
-                    {
-                        data: chartData
+                // 使用完整的axisPointer配置，确保交叉线光标参考线正常显示
+                axisPointer: {
+                    show: true,
+                    type: 'cross',
+                    crossStyle: {
+                        color: '#999',
+                        width: 1,
+                        type: 'dashed',
+                        dashOffset: 3
+                    },
+                    lineStyle: {
+                        color: '#999',
+                        width: 1,
+                        type: 'dashed'
+                    },
+                    shadowStyle: {
+                        color: 'rgba(150, 150, 150, 0.1)',
+                        shadowBlur: 10
+                    },
+                    label: {
+                        show: true,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderColor: '#999',
+                        borderWidth: 1,
+                        padding: [5, 10],
+                        formatter: function(params) {
+                            return params.value;
+                        },
+                        transitionDuration: 0.3
+                    },
+                    animation: true,
+                    animationDuration: 300,
+                    animationEasing: 'cubicOut'
+                },
+                // 增强tooltip配置，确保显示完整信息和样式
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderColor: '#888',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#333',
+                        fontSize: 12,
+                        fontFamily: 'Arial, sans-serif'
+                    },
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(0, 0, 0, 0.1)',
+                    transitionDuration: 0.3,
+                    alwaysShowContent: false,
+                    triggerOn: 'mousemove|click',
+                    showDelay: 0,
+                    hideDelay: 100,
+                    enterable: true,
+                    confine: false,
+                    appendToBody: false,
+                    formatter: function(params) {
+                        // 获取原始数据索引
+                        const dataIndex = params[0].dataIndex;
+                        
+                        // 使用闭包中的原始时间戳数组
+                        if (window.originalTimestamps && window.originalTimestamps.length > dataIndex) {
+                            const fullTimestamp = window.originalTimestamps[dataIndex];
+                            let result = `<strong>${fullTimestamp}</strong><br/>`;
+                            
+                            // 添加开盘价、最高价、最低价和最新价信息
+                            if (window.stockData && window.stockData.open && window.stockData.high && window.stockData.low && window.stockData.close && 
+                                window.timestampMap && window.timestampMap.has(fullTimestamp)) {
+                                const mapping = window.timestampMap.get(fullTimestamp);
+                                const originalIndex = mapping.realtimeIndex; // 使用原始数据的索引
+                                
+                                if (originalIndex !== -1 && 
+                                    window.stockData.open.length > originalIndex && 
+                                    window.stockData.high.length > originalIndex && 
+                                    window.stockData.low.length > originalIndex && 
+                                    window.stockData.close.length > originalIndex) {
+                                    const open = parseFloat(window.stockData.open[originalIndex]) || 0;
+                                    const high = parseFloat(window.stockData.high[originalIndex]) || 0;
+                                    const low = parseFloat(window.stockData.low[originalIndex]) || 0;
+                                    const close = parseFloat(window.stockData.close[originalIndex]) || 0;
+                                    const volume = window.stockData.volume && window.stockData.volume.length > originalIndex ? 
+                                                   (parseFloat(window.stockData.volume[originalIndex]) || 0) : 0;
+                                    
+                                    result += `开盘价: ${open.toFixed(2)}<br/>`;
+                                    result += `最高价: ${high.toFixed(2)}<br/>`;
+                                    result += `最低价: ${low.toFixed(2)}<br/>`;
+                                    result += `最新价: ${close.toFixed(2)}<br/>`;
+                                    if (volume > 0) {
+                                        result += `成交量: ${volume.toLocaleString()}<br/>`;
+                                    }
+                                    result += `<br/>`;
+                                }
+                            }
+                            
+                            // 添加系列数据
+                            params.forEach(param => {
+                                if (param.value !== null) {
+                                    result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
+                                } else {
+                                    result += `${param.marker} ${param.seriesName}: --<br/>`;
+                                }
+                            });
+                            return result;
+                        }
+                        // 降级处理
+                        let result = `<strong>${params[0].axisValue}</strong><br/>`;
+                        params.forEach(param => {
+                            if (param.value !== null) {
+                                result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
+                            } else {
+                                result += `${param.marker} ${param.seriesName}: --<br/>`;
+                            }
+                        });
+                        return result;
                     }
-                ]
-            });
+                }
+            };
+            
+            // 直接使用chart.setOption更新图表，避免销毁和重建实例
+            try {
+                // 优先使用全局window.chart，确保在任何地方都能访问到图表实例
+                const chartInstance = window.chart || chart;
+                
+                // 直接使用setOption更新图表，不销毁实例
+                if (chartInstance && typeof chartInstance === 'object') {
+                    chartInstance.setOption(option, {
+                        notMerge: false,  // 合并新旧配置
+                        lazyUpdate: false, // 立即更新以确保预测数据能及时移除
+                        silent: false     // 触发事件
+                    });
+                } else {
+                    initChart();
+                    if (window.chart && typeof window.chart === 'object') {
+                        window.chart.setOption(option, {
+                            notMerge: false,
+                            lazyUpdate: false,
+                            silent: false
+                        });
+                    }
+                }
+            } catch (error) {
+                // 静默处理错误
+            }
         }
         
         // 更新数据信息面板
         function updateDataPanel(data) {
-            if (!data || !data.datetime || data.datetime.length === 0) {
+            // 根据数据类型检查正确的时间字段
+            const timeField = currentDataType === 'minute' ? 'datetime' : 'date';
+            
+            if (!data || !data[timeField] || data[timeField].length === 0) {
                 // 清空数据面板
                 openPriceEl.textContent = '--';
                 highPriceEl.textContent = '--';
@@ -679,6 +562,14 @@
             }
         }
         
+        // 格式化时间，只显示时分
+        function formatTime(datetimeStr) {
+            // 假设datetimeStr格式为 'YYYY-MM-DD HH:mm:ss'
+            const timePart = datetimeStr.split(' ')[1];
+            // 返回时:分格式，如 '09:30'
+            return timePart ? timePart.slice(0, 5) : datetimeStr;
+        }
+        
         // 获取市场名称
         function getMarketName(market) {
             const marketNames = {
@@ -691,42 +582,135 @@
         
         // 事件监听
         function setupEventListeners() {
-            // 市场选择按钮点击事件
-            marketBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // 移除所有按钮的active类
-                    marketBtns.forEach(b => b.classList.remove('active'));
-                    // 为当前点击的按钮添加active类
-                    this.classList.add('active');
-                    // 获取市场类型
-                    const market = this.getAttribute('data-market');
-                    // 更新当前市场
-                    currentMarket = market;
-                    // 提示用户输入对应市场的股票代码并点击查询
-                    if (stockCodeInput.value.trim()) {
-                        console.log(`已切换到${getMarketName(market)}，请确认股票代码是否正确并点击查询`);
+            // 市场选择变化事件
+            
+            // 叠加预测复选框状态变化事件
+            predictionCheck.addEventListener('change', function() {
+                // 根据复选框状态更新显示文字
+                if (this.checked) {
+                    predictionText.textContent = '是';
+                    
+                    // 自动重新加载数据，使预测功能立即生效
+                    const code = stockCodeInput.value.trim();
+                    if (code) {
+                        const market = marketSelect.value;
+                        const dataType = document.querySelector('input[name="dataType"]:checked').value;
+                        const isPrediction = this.checked;
+                        const startTime = startTimeInput.value;
+                        const endTime = endTimeInput.value;
+                        
+                        // 然后重新加载数据，正确传递isPrediction参数到第4个位置
+                        loadStockData(market, code, dataType, isPrediction, startTime, endTime, true);
+                    }
+                } else {
+                    predictionText.textContent = '否';
+                    
+                    // 自动重新加载数据，使预测功能立即生效
+                    const code = stockCodeInput.value.trim();
+                    if (code) {
+                        // 强制重新加载页面，确保完全清除所有状态
+                        // 保存当前的选择状态
+                        const market = marketSelect.value;
+                        const dataType = document.querySelector('input[name="dataType"]:checked').value;
+                        const startTime = startTimeInput.value;
+                        const endTime = endTimeInput.value;
+                        
+                        // 使用URL参数保存状态，然后重新加载页面
+                        let url = '?';
+                        url += 'market=' + encodeURIComponent(market);
+                        url += '&code=' + encodeURIComponent(code);
+                        url += '&dataType=' + encodeURIComponent(dataType);
+                        url += '&startTime=' + encodeURIComponent(startTime);
+                        url += '&endTime=' + encodeURIComponent(endTime);
+                        url += '&prediction=false'; // 明确表示不显示预测数据
+                        
+                        window.location.href = url;
+                    }
+                }
+            });
+            marketSelect.addEventListener('change', function() {
+                // 清空股票代码输入框
+                stockCodeInput.value = '';
+                // 隐藏下拉菜单
+                stockCodeDropdown.classList.add('hidden');
+            });
+            
+            // 股票代码输入事件
+            stockCodeInput.addEventListener('input', function() {
+                searchStockCode(this.value);
+            });
+            
+            // 数据类型选择事件
+            dataTypeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        currentDataType = this.value;
+                        // 根据数据类型调整时间输入格式
+                        const now = new Date();
+                        const startDate = new Date(now);
+                        const endDate = new Date(now);
+                        
+                        if (this.value === 'minute') {
+                            // 分时线：精确到分钟
+                            startDate.setHours(9, 30, 0, 0);
+                            endDate.setHours(15, 0, 0, 0);
+                        } else {
+                            // 日线：精确到日期
+                            startDate.setDate(now.getDate() - 30);
+                        }
+                        
+                        startTimeInput.value = startDate.toISOString().slice(0, this.value === 'minute' ? 16 : 10);
+                        endTimeInput.value = endDate.toISOString().slice(0, this.value === 'minute' ? 16 : 10);
                     }
                 });
             });
             
             // 查询按钮点击事件
             searchBtn.addEventListener('click', function() {
+                const market = marketSelect.value;
                 const code = stockCodeInput.value.trim();
-                const date = tradeDateInput.value;
+                const dataType = document.querySelector('input[name="dataType"]:checked').value;
+                const isPrediction = predictionCheck.checked;
+                const startTime = startTimeInput.value;
+                const endTime = endTimeInput.value;
+                
+                if (!code) {
+                    alert('请输入股票代码');
+                    return;
+                }
+                
+                if (!startTime || !endTime) {
+                    alert('请选择时间范围');
+                    return;
+                }
+                
+                // 确保isPrediction参数正确传递
+                loadStockData(market, code, dataType, isPrediction, startTime, endTime);
+            });
+            
+            // 刷新按钮点击事件
+            refreshBtn.addEventListener('click', function() {
+                const code = stockCodeInput.value.trim();
+                const market = marketSelect.value;
+                const dataType = document.querySelector('input[name="dataType"]:checked').value;
+                const isPrediction = predictionCheck.checked;
+                const startTime = startTimeInput.value;
+                const endTime = endTimeInput.value;
+                
                 if (code) {
-                    // 获取当前选中的市场
-                    const activeMarketBtn = document.querySelector('.market-btn.active');
-                    const market = activeMarketBtn ? activeMarketBtn.getAttribute('data-market') : 'cn';
-                    loadStockData(market, code, date);
+                    loadStockData(market, code, dataType, isPrediction, startTime, endTime);
                 } else {
                     alert('请输入股票代码');
                 }
             });
             
-            // 刷新按钮点击事件
-            refreshBtn.addEventListener('click', function() {
-                loadStockData(currentMarket, currentCode, currentDate);
-            });
+            // 调试光标按钮点击事件
+            const debugAxisPointerBtn = document.getElementById('debugAxisPointerBtn');
+            if (debugAxisPointerBtn) {
+                debugAxisPointerBtn.addEventListener('click', function() {
+                    debugAxisPointer();
+                });
+            }
             
             // 回车键查询
             stockCodeInput.addEventListener('keypress', function(e) {
@@ -734,10 +718,35 @@
                     searchBtn.click();
                 }
             });
+            
+            // 点击页面其他地方关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                if (!stockCodeInput.contains(e.target) && !stockCodeDropdown.contains(e.target)) {
+                    stockCodeDropdown.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 从URL参数中获取设置
+        function getSettingsFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const settings = {
+                market: urlParams.get('market') || 'cn',
+                code: urlParams.get('code') || 'sh601606',
+                dataType: urlParams.get('dataType') || 'minute',
+                startTime: urlParams.get('startTime') || '',
+                endTime: urlParams.get('endTime') || '',
+                prediction: urlParams.get('prediction') === 'true'
+            };
+            
+            return settings;
         }
         
         // 初始化应用
         function initApp() {
+            // 从URL参数中获取设置
+            const settings = getSettingsFromUrl();
+            
             // 设置默认日期
             setDefaultDate();
             
@@ -747,12 +756,685 @@
             // 设置事件监听
             setupEventListeners();
             
-            // 加载默认数据
-            loadStockData('cn', '600519', currentDate);
+            // 添加数据类型切换事件监听，用于切换日历控件格式
+            const dataTypeRadios = document.querySelectorAll('input[name="dataType"]');
+            dataTypeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const dataType = this.value;
+                    updateDateTimeInputType(dataType);
+                    
+                    // 重新设置默认日期，适应新的数据类型
+                    setDefaultDate();
+                });
+            });
+            
+            // 初始化时设置日历控件格式
+            const initialDataType = settings.dataType === 'day' ? 'day' : 'minute';
+            document.querySelector(`input[name="dataType"][value="${initialDataType}"]`).checked = true;
+            updateDateTimeInputType(initialDataType);
+            
+            // 设置选择框的值
+            marketSelect.value = settings.market;
+            stockCodeInput.value = settings.code;
+            
+            // 设置预测复选框
+            predictionCheck.checked = settings.prediction;
+            predictionText.textContent = settings.prediction ? '是' : '否';
+            
+            // 设置时间范围，如果URL中有提供
+            if (settings.startTime) {
+                startTimeInput.value = settings.startTime;
+            }
+            if (settings.endTime) {
+                endTimeInput.value = settings.endTime;
+            }
+            
+            // 加载数据，使用URL参数中的设置
+            loadStockData(settings.market, settings.code, initialDataType, settings.prediction, 
+                          settings.startTime || currentStartDate, settings.endTime || currentEndDate, 
+                          false); // 设置showErrorAlert为false避免刷新页面时弹出错误提示
         }
         
         // 页面加载完成后初始化应用
         document.addEventListener('DOMContentLoaded', initApp);
+        
+
+    
+
+        // 加载股票数据
+        // showErrorAlert: 控制是否显示错误弹窗，默认为true
+        function loadStockData(market, code, dataType, isPrediction, startTime, endTime, showErrorAlert = true) {
+            stockInfo.textContent = '';
+            
+            // 更新当前参数
+            currentMarket = market;
+            currentCode = code;
+            currentDataType = dataType;
+            currentStartDate = startTime;
+            currentEndDate = endTime;
+            
+            // 更新股票信息显示
+            let infoText = `${getMarketName(market)} ${code} - ${dataType === 'minute' ? '分时线' : '日线'}`;
+            
+            // 处理时间参数格式，日线时只保留日期部分
+            let processedStartTime = startTime;
+            let processedEndTime = endTime;
+            
+            if (dataType === 'day') {
+                // 日线：确保只包含日期部分（YYYY-MM-DD）
+                if (processedStartTime.includes('T')) {
+                    processedStartTime = processedStartTime.split('T')[0];
+                }
+                if (processedEndTime.includes('T')) {
+                    processedEndTime = processedEndTime.split('T')[0];
+                }
+            }
+            
+            // 显示加载状态
+            loadingIndicator.classList.remove('hidden');
+            
+            // 如果需要预测数据，同时请求实时数据和预测数据
+            if (isPrediction) {
+                // 构建API请求URL - 实时数据
+                const realtimeApiUrl = `http://localhost:5001/api/stock/data?market=${market}&code=${code}&dataType=${dataType}&startTime=${encodeURIComponent(processedStartTime)}&endTime=${encodeURIComponent(processedEndTime)}`;
+                
+                // 构建API请求URL - 预测数据
+                const predictionApiUrl = `http://localhost:5001/api/stock/prediction?market=${market}&code=${code}&dataType=${dataType}&startTime=${encodeURIComponent(processedStartTime)}&endTime=${encodeURIComponent(processedEndTime)}`;
+                
+                // 同时发送两个API请求，处理404情况
+                Promise.all([
+                    fetch(realtimeApiUrl).then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        } else if (response.status === 404) {
+                            // 处理404情况，返回空数据结构
+                            return { datetime: [], close: [] };
+                        }
+                        return Promise.reject(new Error('实时数据网络响应错误'));
+                    }),
+                    fetch(predictionApiUrl).then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        } else if (response.status === 404) {
+                            // 处理404情况，返回空数据结构
+                            return { datetime: [], close: [] };
+                        }
+                        return Promise.reject(new Error('预测数据网络响应错误'));
+                    })
+                ])
+                .then(([realtimeData, predictionData]) => {
+                    try {
+                        // 隐藏加载状态
+                        loadingIndicator.classList.add('hidden');
+                        
+                        // 保存预测数据的时间戳和数据到全局变量
+                        window.predictionTimestamps = predictionData && Array.isArray(predictionData.datetime) ? predictionData.datetime : [];
+                        window.predictionData = predictionData && Array.isArray(predictionData.close) ? predictionData.close : [];
+                        
+                        // 创建一个特殊对象，确保updateChart能正确识别预测数据
+                        const combinedData = {
+                            ...realtimeData,
+                            hasPrediction: true,
+                            prediction: window.predictionData,
+                            predictionTimestamps: window.predictionTimestamps
+                        };
+                    
+                    // 处理数据并更新图表
+                    updateChart(combinedData, true, isPrediction);
+                    
+                    // 更新数据信息面板
+                    updateDataPanel(combinedData);
+                    } catch (error) {
+                        // 静默处理错误
+                    }
+                })
+                .catch(error => {
+                    // 隐藏加载状态
+                    loadingIndicator.classList.add('hidden');
+                    
+                    // 清空图表
+                    if (chart && typeof chart === 'object') {
+                        chart.setOption({
+                            xAxis: {
+                                data: []
+                            },
+                            series: []
+                        });
+                    }
+                    
+                    // 清空数据信息面板
+                    openPriceEl.textContent = '--';
+                    highPriceEl.textContent = '--';
+                    lowPriceEl.textContent = '--';
+                    closePriceEl.textContent = '--';
+                    
+                    // 只有在showErrorAlert为true时才显示错误弹窗
+                    if (showErrorAlert) {
+                        alert('获取股票数据失败：' + (error.message || '未知错误'));
+                    }
+                });
+            } else {
+                // 只请求实时数据
+                const apiUrl = `http://localhost:5001/api/stock/data?market=${market}&code=${code}&dataType=${dataType}&startTime=${encodeURIComponent(processedStartTime)}&endTime=${encodeURIComponent(processedEndTime)}`;
+                
+                // 发送API请求
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('网络响应错误');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 隐藏加载状态
+                        loadingIndicator.classList.add('hidden');
+                        
+                        // 处理数据并更新图表
+                        updateChart(data, true, isPrediction);
+                        
+                        // 更新数据信息面板
+                        updateDataPanel(data);
+                    })
+                    .catch(error => {
+                        // 隐藏加载状态
+                        loadingIndicator.classList.add('hidden');
+                        
+                        // 清空图表
+                        if (chart && typeof chart === 'object') {
+                            chart.setOption({
+                                xAxis: {
+                                    data: []
+                                },
+                                series: []
+                            });
+                        }
+                        
+                        // 清空数据信息面板
+                        openPriceEl.textContent = '--';
+                        highPriceEl.textContent = '--';
+                        lowPriceEl.textContent = '--';
+                        closePriceEl.textContent = '--';
+                        
+                        // 只有在showErrorAlert为true时才显示错误弹窗
+                        if (showErrorAlert) {
+                            alert('获取股票数据失败：' + (error.message || '未知错误'));
+                        }
+                    });
+            }
+        }
+        
+        // 更新图表数据
+        function updateChart(data, isRealtime, isPrediction) {
+            // 根据数据类型检查正确的时间字段
+            const timeField = currentDataType === 'minute' ? 'datetime' : 'date';
+            
+            if (!data || (!data[timeField] || data[timeField].length === 0)) {
+                // 没有数据时显示空图表
+                if (window.chart && typeof window.chart === 'object') {
+                    window.chart.setOption({
+                        xAxis: {
+                            data: []
+                        },
+                        series: []
+                    });
+                }
+                alert('未找到该股票的数据');
+                return;
+            }
+            
+            // 处理时间格式
+            let formattedTimes = [];
+            // 存储完整的股票数据到全局变量，以便在tooltip中使用
+            window.stockData = data;
+            
+            // 创建一个时间戳映射，用于合并和排序
+            let timestampMap = new Map();
+            
+            // 添加实时数据的时间戳
+            if (data[timeField]) {
+                data[timeField].forEach((timestamp, index) => {
+                    if (!timestampMap.has(timestamp)) {
+                        timestampMap.set(timestamp, {
+                            index: timestampMap.size,
+                            realtimeIndex: index,
+                            predictionIndex: -1
+                        });
+                    }
+                });
+            }
+            
+            // 处理预测数据时间戳（无论是否显示预测数据，都需要用于时间轴对齐）
+            let predictionTimestamps = [];
+            let hasPredictionTimestamps = false;
+            
+            // 如果不显示预测数据，清除预测相关的全局变量和重置图表
+            if (!isPrediction) {
+                // 清除预测相关的全局变量
+                window.predictionTimestamps = null;
+                window.predictionData = null;
+                delete window.predictionTimestamps;
+                delete window.predictionData;
+            } else {
+                // 如果显示预测数据，获取预测数据时间戳用于时间轴对齐
+                if ((data && data.predictionTimestamps) || (window.predictionTimestamps && Array.isArray(window.predictionTimestamps))) {
+                    // 使用传入的预测时间戳或全局的预测时间戳
+                    predictionTimestamps = data && data.predictionTimestamps ? data.predictionTimestamps : window.predictionTimestamps;
+                    hasPredictionTimestamps = true;
+                    // 添加预测数据时间戳到映射
+                    predictionTimestamps.forEach((timestamp, index) => {
+                        if (!timestampMap.has(timestamp)) {
+                            timestampMap.set(timestamp, {
+                                index: timestampMap.size,
+                                realtimeIndex: -1,
+                                predictionIndex: index
+                            });
+                        } else {
+                            // 如果时间戳已存在，只更新predictionIndex
+                            const existing = timestampMap.get(timestamp);
+                            existing.predictionIndex = index;
+                        }
+                    });
+                }
+            }
+            
+            // 将时间戳映射转换为数组并按时间排序
+            const sortedTimestamps = Array.from(timestampMap.keys()).sort();
+            
+            // 设置window.originalTimestamps为排序后的时间戳，用于tooltip显示
+            window.originalTimestamps = sortedTimestamps;
+            // 将timestampMap设置为全局变量，以便在tooltip.formatter中使用
+            window.timestampMap = timestampMap;
+            
+            // 处理格式化时间显示
+            if (currentDataType === 'minute') {
+                // 跟踪前一个数据点的日期，用于检测跨天
+                let previousDate = null;
+                formattedTimes = sortedTimestamps.map((datetimeStr) => {
+                    const date = datetimeStr.split(' ')[0];
+                    const timePart = formatTime(datetimeStr);
+                    
+                    // 如果是同一天且不是第一个数据点，则只显示时间；否则显示日期+时间
+                    if (date === previousDate && previousDate !== null) {
+                        return timePart;
+                    } else {
+                        previousDate = date;
+                        // 提取月日部分，格式为 MM-DD HH:mm
+                        const dateComponents = date.split('-');
+                        const shortDate = `${dateComponents[1]}-${dateComponents[2]}`;
+                        return `${shortDate}\n${timePart}`; // 使用换行符分隔日期和时间
+                    }
+                });
+            } else {
+                formattedTimes = sortedTimestamps;
+            }
+            
+            // 准备图表系列
+            const series = [];
+            
+            // 添加实时数据系列
+            if (isRealtime && data.close) {
+                // 创建实时数据点，根据合并后的时间戳映射
+                const realtimeDataPoints = sortedTimestamps.map((timestamp) => {
+                    if (!timestampMap || !(timestampMap instanceof Map)) {
+                        return null;
+                    }
+                    const mapping = timestampMap.get(timestamp);
+                    if (mapping && mapping.realtimeIndex !== -1 && data.close[mapping.realtimeIndex] !== undefined) {
+                        return parseFloat(data.close[mapping.realtimeIndex]);
+                    }
+                    return null; // 对于没有实时数据的时间点，使用null表示缺口
+                });
+                
+                series.push({
+                    name: '实时数据',
+                    type: 'line',
+                    data: realtimeDataPoints,
+                    smooth: true,
+                    symbol: 'none',
+                    lineStyle: {
+                        color: '#1890FF', // 蓝色
+                        width: 2
+                    },
+                    emphasis: {
+                        focus: 'crosshair', // 使用crosshair确保多系列时光标跟随正常
+                        itemStyle: {
+                            borderWidth: 2
+                        }
+                    },
+                    tooltip: {
+                        show: true
+                    },
+                    connectNulls: false, // 不连接空数据点，保持数据缺口
+                    crosshair: {
+                        show: true,
+                        lineStyle: {
+                            color: '#333',
+                            width: 1,
+                            type: 'dashed'
+                        }
+                    }
+                });
+            }
+            
+            // 添加预测数据系列
+            if (isPrediction && ((data && data.prediction) || window.predictionData)) {
+                // 使用传入的数据或全局变量中的预测数据
+                const predictionData = data && data.prediction ? data.prediction : window.predictionData;
+                const predictionTimestamps = data && data.predictionTimestamps ? data.predictionTimestamps : window.predictionTimestamps;
+                
+                // 创建预测数据点，确保与实时数据时间戳对齐
+                const predictionDataPoints = [];
+                let nonNullPredictionPoints = 0;
+                
+                // 确保预测数据和时间戳存在且长度匹配
+                if (predictionData && predictionTimestamps && predictionData.length === predictionTimestamps.length) {
+                    // 先添加空数据点填充到预测数据开始的位置
+                    if (sortedTimestamps.length > 0 && predictionTimestamps.length > 0) {
+                        const firstPredictionTimestamp = predictionTimestamps[0];
+                        const firstPredictionIndex = sortedTimestamps.indexOf(firstPredictionTimestamp);
+                        
+                        if (firstPredictionIndex > 0) {
+                            // 在预测数据开始前添加空数据点
+                            for (let i = 0; i < firstPredictionIndex; i++) {
+                                predictionDataPoints.push(null);
+                            }
+                        }
+                    }
+                    
+                    // 添加预测数据点
+                    predictionData.forEach((value, index) => {
+                        const predictionValue = value === null ? null : parseFloat(value);
+                        predictionDataPoints.push(predictionValue);
+                    });
+                    
+                    // 如果预测数据点少于sortedTimestamps长度，补充空数据点
+                    while (predictionDataPoints.length < sortedTimestamps.length) {
+                        predictionDataPoints.push(null);
+                    }
+                    
+                    // 记录非空预测数据点的数量
+                    nonNullPredictionPoints = predictionDataPoints.filter(point => point !== null).length;
+                } else {
+                    // 如果预测数据或时间戳不存在或长度不匹配，创建全为空的数组
+                    for (let i = 0; i < sortedTimestamps.length; i++) {
+                        predictionDataPoints.push(null);
+                    }
+                }
+                
+                // 确保至少有一些有效数据点才添加预测系列
+                if (nonNullPredictionPoints > 0) {
+                    series.push({
+                        name: '预测数据',
+                        type: 'line',
+                        data: predictionDataPoints,
+                        smooth: true,
+                        symbol: 'none',
+                        lineStyle: {
+                            color: '#FF4D4F', // 红色
+                            width: 2,
+                            type: 'solid' // 实线
+                        },
+                        emphasis: {
+                            focus: 'crosshair', // 使用crosshair确保多系列时光标跟随正常
+                            itemStyle: {
+                                borderWidth: 2
+                            }
+                        },
+                        tooltip: {
+                            show: true
+                        },
+                        connectNulls: true, // 连接空数据点，确保线条连续显示
+                        crosshair: {
+                            show: true,
+                            lineStyle: {
+                                color: '#333',
+                                width: 1,
+                                type: 'dashed'
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // 完整重建图表配置
+            const option = {
+                xAxis: {
+                    data: formattedTimes,
+                    // 完整保留xAxis的原始配置
+                    type: 'category',
+                    boundaryGap: false,
+                    axisLabel: {
+                        color: '#666',
+                        fontSize: 12,
+                        // 控制刻度显示间隔
+                        interval: function(index, value) {
+                            if (!value) return false;
+                            
+                            // 获取总数据点数量
+                            const totalPoints = formattedTimes.length;
+                            
+                            // 根据数据点数量动态调整显示间隔
+                            if (totalPoints > 200) {
+                                // 数据点非常多时，只显示大约1/20的标签
+                                return index % Math.ceil(totalPoints / 20) === 0;
+                            } else if (totalPoints > 100) {
+                                // 数据点较多时，只显示大约1/10的标签
+                                return index % Math.ceil(totalPoints / 10) === 0;
+                            } else if (totalPoints > 50) {
+                                // 数据点中等时，只显示大约1/5的标签
+                                return index % Math.ceil(totalPoints / 5) === 0;
+                            } else if (totalPoints > 30) {
+                                // 数据点偏多时，只显示大约1/3的标签
+                                return index % Math.ceil(totalPoints / 3) === 0;
+                            }
+                            
+                            // 处理可能包含日期的情况
+                            const timePart = value.split('\n')[1] || value;
+                            // 对于分钟数据，只显示09:30以及每30分钟的刻度
+                            if (currentDataType === 'minute') {
+                                return (timePart === '09:30') || (parseInt(timePart.split(':')[1]) === 0 || parseInt(timePart.split(':')[1]) === 30);
+                            }
+                            
+                            // 数据点较少时，显示所有标签
+                            return true;
+                        },
+                        height: currentDataType === 'minute' ? 36 : 20,
+                        rotate: 0
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: '#ddd'
+                        }
+                    },
+                    axisTick: {
+                        show: true
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#666',
+                        fontSize: 12,
+                        formatter: '{value}'
+                    },
+                    axisLine: {
+                        show: true,
+                        lineStyle: {
+                            color: '#ddd'
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#f0f0f0',
+                            type: 'dashed'
+                        }
+                    },
+                    // 动态计算纵坐标范围，使变化趋势更明显
+                    min: function(value) {
+                        // 获取数据的最小值
+                        const dataMin = value.min;
+                        // 计算最小值的95%作为Y轴最小值，让图表底部有一定空间
+                        return dataMin * 0.95;
+                    },
+                    max: function(value) {
+                        // 获取数据的最大值
+                        const dataMax = value.max;
+                        // 计算最大值的105%作为Y轴最大值，让图表顶部有一定空间
+                        return dataMax * 1.05;
+                    }
+                },
+                series: series,
+                // 增强axisPointer配置，提供更丰富的交互体验
+                axisPointer: {
+                    show: true,
+                    type: 'cross',
+                    crossStyle: {
+                        color: '#999',
+                        width: 1,
+                        type: 'dashed',
+                        dashOffset: 3
+                    },
+                    lineStyle: {
+                        color: '#999',
+                        width: 1,
+                        type: 'dashed'
+                    },
+                    shadowStyle: {
+                        color: 'rgba(150, 150, 150, 0.1)',
+                        shadowBlur: 10
+                    },
+                    label: {
+                        show: true,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderColor: '#999',
+                        borderWidth: 1,
+                        padding: [5, 10],
+                        formatter: function(params) {
+                            return params.value;
+                        },
+                        transitionDuration: 0.3
+                    },
+                    animation: true,
+                    animationDuration: 300,
+                    animationEasing: 'cubicOut'
+                },
+                // 增强tooltip配置，确保显示完整信息和样式
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderColor: '#888',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#333',
+                        fontSize: 12,
+                        fontFamily: 'Arial, sans-serif'
+                    },
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(0, 0, 0, 0.1)',
+                    transitionDuration: 0.3,
+                    alwaysShowContent: false,
+                    triggerOn: 'mousemove|click',
+                    showDelay: 0,
+                    hideDelay: 100,
+                    enterable: true,
+                    confine: false,
+                    appendToBody: false,
+                    formatter: function(params) {
+                        // 获取原始数据索引
+                        const dataIndex = params[0].dataIndex;
+                        
+                        // 使用闭包中的原始时间戳数组
+                        if (window.originalTimestamps && window.originalTimestamps.length > dataIndex) {
+                            const fullTimestamp = window.originalTimestamps[dataIndex];
+                            let result = `<strong>${fullTimestamp}</strong><br/>`;
+                            
+                            // 添加开盘价、最高价、最低价和最新价信息
+                            if (window.stockData && window.stockData.open && window.stockData.high && window.stockData.low && window.stockData.close && 
+                                window.timestampMap && window.timestampMap.has(fullTimestamp)) {
+                                const mapping = window.timestampMap.get(fullTimestamp);
+                                const originalIndex = mapping.realtimeIndex; // 使用原始数据的索引
+                                
+                                if (originalIndex !== -1 && 
+                                    window.stockData.open.length > originalIndex && 
+                                    window.stockData.high.length > originalIndex && 
+                                    window.stockData.low.length > originalIndex && 
+                                    window.stockData.close.length > originalIndex) {
+                                    const open = parseFloat(window.stockData.open[originalIndex]) || 0;
+                                    const high = parseFloat(window.stockData.high[originalIndex]) || 0;
+                                    const low = parseFloat(window.stockData.low[originalIndex]) || 0;
+                                    const close = parseFloat(window.stockData.close[originalIndex]) || 0;
+                                    const volume = window.stockData.volume && window.stockData.volume.length > originalIndex ? 
+                                                   (parseFloat(window.stockData.volume[originalIndex]) || 0) : 0;
+                                    
+                                    result += `开盘价: ${open.toFixed(2)}<br/>`;
+                                    result += `最高价: ${high.toFixed(2)}<br/>`;
+                                    result += `最低价: ${low.toFixed(2)}<br/>`;
+                                    result += `最新价: ${close.toFixed(2)}<br/>`;
+                                    if (volume > 0) {
+                                        result += `成交量: ${volume.toLocaleString()}<br/>`;
+                                    }
+                                    result += `<br/>`;
+                                }
+                            }
+                            
+                            // 添加系列数据
+                            params.forEach(param => {
+                                if (param.value !== null) {
+                                    result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
+                                } else {
+                                    result += `${param.marker} ${param.seriesName}: --<br/>`;
+                                }
+                            });
+                            return result;
+                        }
+                        // 降级处理
+                        let result = `<strong>${params[0].axisValue}</strong><br/>`;
+                        params.forEach(param => {
+                            if (param.value !== null) {
+                                result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)}<br/>`;
+                            } else {
+                                result += `${param.marker} ${param.seriesName}: --<br/>`;
+                            }
+                        });
+                        return result;
+                    }
+                },
+                legend: {
+                    data: ['实时数据', '预测数据'],
+                    bottom: 10
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '15%',
+                    top: '15%',
+                    containLabel: true
+                }
+            };
+            
+            // 设置图表选项
+            try {
+                // 优先使用全局window.chart.setOption
+                if (window.chart && typeof window.chart === 'object') {
+                    window.chart.setOption(option, true);
+                } else {
+                    // 如果全局实例不存在，尝试使用局部chart变量
+                    if (chart && typeof chart === 'object') {
+                        chart.setOption(option, true);
+                    } else {
+                        // 如果都不存在，重新初始化图表
+                        initChart();
+                        if (window.chart && typeof window.chart === 'object') {
+                            window.chart.setOption(option, true);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('更新图表时出错:', error);
+            }
+        }
     </script>
+    
+
 </body>
 </html>
